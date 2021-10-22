@@ -21,7 +21,8 @@ setup(
     long_description=long_description,
     name="scriptutil",
     packages=find_packages(),
-    version="0.1",
+    package_data={"scriptutil": ["py.typed"]},
+    version="0.1.1",
     project_urls={
         "Source": "https://github.com/RikyIsola/python-scriptutils",
         "Tracker": "https://github.com/RikyIsola/python-scriptutils/issues",
