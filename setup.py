@@ -19,7 +19,7 @@ setup(
     description="Utils to better use python as a scripting language",
     keywords=["script", "utils"],
     long_description=long_description,
-    name="script-util",
+    name="scriptutil",
     packages=find_packages(),
     version="0.1",
     project_urls={
