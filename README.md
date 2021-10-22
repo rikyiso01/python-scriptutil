@@ -1,3 +1,3 @@
 # ScriptUtils
 
-Utils to better use python as a scripting
+Utils to better use python as a scripting language
