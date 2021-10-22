@@ -20,8 +20,8 @@ setup(
     packages=find_packages(),
     version="0.1",
     project_urls={
-        "Source": "",
-        "Tracker": "",
+        "Source": "https://github.com/RikyIsola/python-scriptutils",
+        "Tracker": "https://github.com/RikyIsola/python-scriptutils/issues",
     },
     python_requires=">3.9",
     long_description_content_type="text/markdown",
