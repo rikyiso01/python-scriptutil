@@ -13,6 +13,9 @@ single_parser = ArgumentParser()
 
 
 def entry_point(function: T) -> T:
+    """Decorator to mark an entry point of the program, it uses the argparse library
+    to create the command options based on the function annotations
+    """
     reset = None
     if len(functions) == 0:
         current = single_parser
@@ -92,6 +95,7 @@ def entry_point(function: T) -> T:
 
 
 def main():
+    """Entry point for the application"""
     if len(functions) == 0:
         raise ValueError("No entry point specified")
     elif len(functions) == 1:
