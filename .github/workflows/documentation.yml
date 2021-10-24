@@ -1,0 +1,35 @@
+name: Update documentation
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout main program
+      uses: actions/checkout@v2
+    - name: Checkout docs
+      uses: actions/checkout@v2
+      with:
+        ref: 'docs'
+        path: 'docs'
+    - name: Setup python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+    - name: Install pdoc
+      run: pip install pdoc
+    - name: Create documentation
+      run: pdoc -o docs ./scriptutil ./scriptutil.shell
+    - name: Commit files
+      run: |
+        git config --local user.email "31405152+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add .
+        git commit -m "Update documentation"
+      working-directory: docs
+    - name: Push changes
+      run: git push
+      working-directory: docs
