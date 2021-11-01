@@ -7,4 +7,5 @@ def __getattr__(item: str) -> _Any:
     try:
         return _shell_command(item)
     except FileNotFoundError as e:
+        print(e.filename)
         raise AttributeError(e.args[0])

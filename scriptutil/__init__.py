@@ -7,15 +7,13 @@ requirements is used to detect if the required dependencies are satisfied
 the other functions are reimplementation of common bash commands
 """
 from ._entrypoint import main, entry_point
-from ._shell import shell_command, RunningCommand
-from ._requirements import requirements
-from ._coreutils import cp, ls, mkdir, mv, rm, cat
+from ._shell import shell_command, RunningCommand, ShellCommandException
+from ._coreutils import cp, ls, mkdir, mv, rm, cat, read, write
 
 __all__ = [
     "main",
     "shell_command",
     "entry_point",
-    "requirements",
     "cp",
     "ls",
     "mkdir",
@@ -23,4 +21,7 @@ __all__ = [
     "cat",
     "mv",
     "RunningCommand",
+    "read",
+    "write",
+    "ShellCommandException",
 ]

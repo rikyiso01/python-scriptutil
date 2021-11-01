@@ -22,7 +22,7 @@ setup(
     name="scriptutil",
     packages=find_packages(),
     package_data={"scriptutil": ["py.typed"]},
-    version="0.1.1",
+    version="0.2",
     project_urls={
         "Source": "https://github.com/RikyIsola/python-scriptutils",
         "Tracker": "https://github.com/RikyIsola/python-scriptutils/issues",

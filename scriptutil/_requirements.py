@@ -1,15 +1,23 @@
-from sys import executable, argv
+#!/usr/bin/env python3.9
+from sys import executable, stderr
 from subprocess import run
-from os import execv
-from typing import NoReturn
-from shutil import copy
 
 
-def requirements(*requirements: str) -> NoReturn:
-    """Check if the program satisfies the given requirements"""
-    run([executable, "-m", "pip", "install", *requirements], check=True)
-    execv(executable, [executable] + argv)
+def install():
+    run([executable, "-m", "pip", "install", *REQUIREMENTS], check=True)
 
 
-def __main__():
-    copy(__file__, "requirements.py")
+def missing_requirements():
+    print(
+        stderr,
+        "Missing requirements, install them with:",
+        executable,
+        "requirements.py",
+    )
+    exit(1)
+
+
+REQUIREMENTS = ["scriptutil"]
+
+if __name__ == "__main__":
+    install()

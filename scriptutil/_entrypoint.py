@@ -4,7 +4,7 @@ from collections.abc import Callable
 from argparse import ArgumentParser
 from ._utils import shell_name
 
-T = TypeVar("T", bound=Callable[..., None])
+T = TypeVar("T", bound=Callable[..., Any])
 
 functions: dict[str, Callable] = {}
 parser = ArgumentParser()
@@ -17,13 +17,14 @@ def entry_point(function: T) -> T:
     to create the command options based on the function annotations
     """
     reset = None
+    function_name = shell_name(function.__name__)
     if len(functions) == 0:
         current = single_parser
     else:
         if len(functions) == 1:
             reset = list(functions.values())[0]
-        current = subparser.add_parser(function.__name__, help=function.__doc__)
-    functions[function.__name__] = function
+        current = subparser.add_parser(function_name, help=function.__doc__)
+    functions[function_name] = function
     if reset is not None:
         entry_point(reset)
     types = get_type_hints(function)
@@ -100,10 +101,11 @@ def main():
         raise ValueError("No entry point specified")
     elif len(functions) == 1:
         argv = single_parser.parse_args().__dict__.copy()
+        function = list(functions.values())[0]
     else:
         parser.add_subparsers
         argv = parser.parse_args().__dict__.copy()
-    function = functions[argv["program_name"]]
+        function = functions[argv["program_name"]]
     args = []
     kwargs = {}
     for parameter in signature(function).parameters.values():

@@ -80,3 +80,13 @@ def cat(*files: str) -> str:
         with open(file, "rt") as f:
             result += f.read()
     return result
+
+
+def read(file: str) -> str:
+    with open(file, "rt") as f:
+        return f.read()
+
+
+def write(file: str, content: str) -> None:
+    with open(file, "wt") as f:
+        f.write(content)
