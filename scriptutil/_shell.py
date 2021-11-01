@@ -245,9 +245,6 @@ def shell_command(command_name: str) -> Command:
     """
     command_path = which(command_name)
     if command_path is None:
-        e = FileNotFoundError(f"command not found: {command_name}")
-        e.filename = command_path
-        e.errno = 2
-        raise e
+        raise FileNotFoundError(f"command not found: {command_name}")
     command_name = abspath(command_path)
     return Command(command_name)
