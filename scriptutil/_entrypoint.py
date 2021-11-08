@@ -35,6 +35,10 @@ def entry_point(function: T) -> T:
         if (
             parameter.kind == Parameter.POSITIONAL_ONLY
             or parameter.kind == Parameter.VAR_POSITIONAL
+            or (
+                parameter.kind == Parameter.POSITIONAL_OR_KEYWORD
+                and parameter.default is Parameter.empty
+            )
         ):
             name = "{}"
             positional = True
@@ -58,6 +62,10 @@ def entry_point(function: T) -> T:
             type = types[parameter.name]
             if type is bool:
                 options["action"] = "store_true"
+                if "default" not in options:
+                    options["default"] = False
+                if "required" in options:
+                    options["required"] = False
             elif type is list or type == list[str]:
                 options["action"] = "append"
             elif type == list[int]:
@@ -112,9 +120,11 @@ def main():
         value = argv[shell_name(parameter.name)]
         if (
             parameter.kind == Parameter.POSITIONAL_ONLY
-            or parameter.kind == Parameter.VAR_POSITIONAL
+            or parameter.kind == Parameter.POSITIONAL_OR_KEYWORD
         ):
             args.append(value)
+        elif parameter.kind == Parameter.VAR_POSITIONAL:
+            args.extend(value)
         else:
             kwargs[parameter.name] = value
     function(*args, **kwargs)

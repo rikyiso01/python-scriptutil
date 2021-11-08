@@ -1,11 +1,14 @@
-from typing import Any, Union, Optional, BinaryIO, IO, cast
+from typing import Any, Union, Optional, BinaryIO, cast, TextIO
 from collections.abc import Iterable, Iterator, Hashable
 from shutil import which
 from subprocess import Popen, PIPE
 from os import getcwd, environ
 from ._utils import shell_name
 from os.path import abspath
-from contextlib import AbstractContextManager
+from sys import stderr, stdout
+from contextlib import AbstractContextManager, contextmanager
+from select import select
+from itertools import cycle
 
 BASE_TYPE = Union[str, int, float]
 PARSED_OUTPUT = Union[BASE_TYPE, None, list[Union[BASE_TYPE, list[BASE_TYPE]]]]
@@ -54,29 +57,45 @@ class RunningCommand(Iterable[str], AbstractContextManager):
         self._output = bytearray()
         self._error = bytearray()
 
+    def _read(self) -> Iterable[tuple[bytes, bytes]]:
+        arrays = self._output, self._error
+        streams = self._stdout, self._stderr
+        while True:
+            outs, _, __ = select(streams, [], [])
+            available = (self._stdout in outs, self._stderr in outs)
+            result = list(
+                map(lambda x, cond: x.read(255) if cond else b"", streams, available)
+            )
+            if all(map(lambda x: len(x) == 0, result)):
+                break
+            for array, res in zip(arrays, result):
+                array.extend(res)
+            yield result[0], result[1]
+
     def __iter__(self) -> Iterator[str]:
         try:
             if not self._closed:
-                for line in self._stdout:
-                    self._output.extend(line)
-                    yield line.decode()
+                for line, _ in self._read():
+                    if len(line) > 0:
+                        yield line.decode()
             else:
                 for line in self._output.splitlines():
                     yield line.decode()
         finally:
             self._check_exception()
 
-    def _read_stream(self, stream: IO[bytes], array: bytearray) -> bytes:
+    def _wait(self):
         if not self._closed:
-            result = stream.read()
-            array.extend(result)
-        return bytes(array)
+            for _ in self._read():
+                pass
 
     def _read_output(self) -> bytes:
-        return self._read_stream(self._stdout, self._output)
+        self._wait()
+        return bytes(self._output)
 
     def _read_error(self) -> bytes:
-        return self._read_stream(self._stderr, self._error)
+        self._wait()
+        return bytes(self._error)
 
     def __str__(self) -> str:
         return bytes(self).decode()
@@ -94,8 +113,6 @@ class RunningCommand(Iterable[str], AbstractContextManager):
     def _close(self) -> None:
         if not self._closed:
             try:
-                self._read_output()
-                self._read_error()
                 self._stdout.close()
                 self._stderr.close()
             finally:
@@ -103,7 +120,7 @@ class RunningCommand(Iterable[str], AbstractContextManager):
 
     def _check(self) -> bool:
         try:
-            self._read_output()
+            self._wait()
             result = self._process.wait() == 0
         finally:
             self._close()
@@ -111,7 +128,7 @@ class RunningCommand(Iterable[str], AbstractContextManager):
 
     def _check_exception(self) -> None:
         try:
-            self._read_output()
+            self._wait()
             self._process.wait()
             if (
                 self._process.returncode != 0
@@ -132,8 +149,19 @@ class RunningCommand(Iterable[str], AbstractContextManager):
 
     def print(self) -> None:
         """Print the command output to the standard output"""
-        for line in self:
-            print(line, sep="", end="")
+        try:
+            iterable = (
+                self._read()
+                if not self._closed
+                else zip(self._read_output().splitlines(), cycle([b""]))
+            )
+            for out, err in iterable:
+                print(out.decode(), end="")
+                stdout.flush()
+                print(err.decode(), end="", file=stderr)
+                stderr.flush()
+        finally:
+            self._check_exception()
 
     def __del__(self) -> None:
         if not self._closed:
@@ -188,25 +216,36 @@ class Command(Hashable):
     def __call__(
         self,
         *args: StandardTypes,
-        _input: Union[str, bytes, BinaryIO] = b"",
+        _input: Union[str, bytes, BinaryIO, TextIO] = b"",
         _cwd: str = getcwd(),
         _env: Optional[dict[str, Any]] = None,
         **kwargs: Union[StandardTypes, bool],
     ) -> RunningCommand:
         command = [self._command_name]
-        for key, value in kwargs.items():
-            if value is None:
-                continue
-            key = shell_name(key)
-            command.append(f"-{key}" if len(key) == 1 else f"--{key}")
-            if not isinstance(value, bool):
-                command[-1] += "=" + str(value)
+        for key, v in kwargs.items():
+            if isinstance(v, list):
+                values = v
+            else:
+                values = [v]
+            for value in values:
+                if value is None:
+                    continue
+                key = shell_name(key)
+                if len(key) == 1:
+                    prefix = "-"
+                    suffix = ""
+                else:
+                    prefix = "--"
+                    suffix = "="
+                command.append(f"{prefix}{key}")
+                if not isinstance(value, bool):
+                    command[-1] += suffix + str(value)
         for arg in args:
             if arg is not None:
                 command.append(str(arg))
         if _env is None:
             _env = dict(environ)
-        stdin: Union[int, BinaryIO]
+        stdin: Union[int, BinaryIO, TextIO]
         if isinstance(_input, bytes) or isinstance(_input, str):
             stdin = PIPE
         else:
@@ -218,13 +257,14 @@ class Command(Hashable):
             stdout=PIPE,
             env=_env,
             cwd=_cwd,
+            bufsize=0,
         )
-        assert process.stdin is not None
         if isinstance(_input, str):
             _input = _input.encode()
         if isinstance(_input, bytes):
+            assert process.stdin is not None
             process.stdin.write(_input)
-        process.stdin.close()
+            process.stdin.close()
         return RunningCommand(process, " ".join(command))
 
     def __str__(self) -> str:
@@ -248,3 +288,11 @@ def shell_command(command_name: str) -> Command:
         raise FileNotFoundError(f"command not found: {command_name}")
     command_name = abspath(command_path)
     return Command(command_name)
+
+
+@contextmanager
+def exit_on_error():
+    try:
+        yield
+    except ShellCommandException:
+        exit(1)
