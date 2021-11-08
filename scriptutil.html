@@ -89,6 +89,12 @@
                 </ul>
 
             </li>
+            <li>
+                    <a class="function" href="#silent_keyboard_interrupt">silent_keyboard_interrupt</a>
+            </li>
+            <li>
+                    <a class="function" href="#exit_on_error">exit_on_error</a>
+            </li>
     </ul>
 
 
@@ -125,12 +131,9 @@ the other functions are reimplementation of common bash commands</p>
 <span class="sd">the other functions are reimplementation of common bash commands</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span> <span class="nn">._entrypoint</span> <span class="kn">import</span> <span class="n">main</span><span class="p">,</span> <span class="n">entry_point</span>
-<span class="kn">from</span> <span class="nn">._shell</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">shell_command</span><span class="p">,</span>
-    <span class="n">RunningCommand</span><span class="p">,</span>
-    <span class="n">ShellCommandException</span><span class="p">,</span>
-<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">._shell</span> <span class="kn">import</span> <span class="n">shell_command</span><span class="p">,</span> <span class="n">RunningCommand</span><span class="p">,</span> <span class="n">ShellCommandException</span><span class="p">,</span> <span class="n">exit_on_error</span>
 <span class="kn">from</span> <span class="nn">._coreutils</span> <span class="kn">import</span> <span class="n">cp</span><span class="p">,</span> <span class="n">ls</span><span class="p">,</span> <span class="n">mkdir</span><span class="p">,</span> <span class="n">mv</span><span class="p">,</span> <span class="n">rm</span><span class="p">,</span> <span class="n">cat</span><span class="p">,</span> <span class="n">read</span><span class="p">,</span> <span class="n">write</span>
+<span class="kn">from</span> <span class="nn">._utils</span> <span class="kn">import</span> <span class="n">silent_keyboard_interrupt</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;main&quot;</span><span class="p">,</span>
@@ -146,6 +149,8 @@ the other functions are reimplementation of common bash commands</p>
     <span class="s2">&quot;read&quot;</span><span class="p">,</span>
     <span class="s2">&quot;write&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ShellCommandException&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;silent_keyboard_interrupt&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;exit_on_error&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 </pre></div>
 
@@ -179,9 +184,11 @@ the other functions are reimplementation of common bash commands</p>
         <span class="n">value</span> <span class="o">=</span> <span class="n">argv</span><span class="p">[</span><span class="n">shell_name</span><span class="p">(</span><span class="n">parameter</span><span class="o">.</span><span class="n">name</span><span class="p">)]</span>
         <span class="k">if</span> <span class="p">(</span>
             <span class="n">parameter</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">POSITIONAL_ONLY</span>
-            <span class="ow">or</span> <span class="n">parameter</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">VAR_POSITIONAL</span>
+            <span class="ow">or</span> <span class="n">parameter</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span>
         <span class="p">):</span>
             <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">parameter</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">VAR_POSITIONAL</span><span class="p">:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">kwargs</span><span class="p">[</span><span class="n">parameter</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
     <span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -260,6 +267,10 @@ GNU commands arguments</p>
         <span class="k">if</span> <span class="p">(</span>
             <span class="n">parameter</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">POSITIONAL_ONLY</span>
             <span class="ow">or</span> <span class="n">parameter</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">VAR_POSITIONAL</span>
+            <span class="ow">or</span> <span class="p">(</span>
+                <span class="n">parameter</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span>
+                <span class="ow">and</span> <span class="n">parameter</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">empty</span>
+            <span class="p">)</span>
         <span class="p">):</span>
             <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span>
             <span class="n">positional</span> <span class="o">=</span> <span class="kc">True</span>
@@ -283,6 +294,10 @@ GNU commands arguments</p>
             <span class="nb">type</span> <span class="o">=</span> <span class="n">types</span><span class="p">[</span><span class="n">parameter</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">type</span> <span class="ow">is</span> <span class="nb">bool</span><span class="p">:</span>
                 <span class="n">options</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;store_true&quot;</span>
+                <span class="k">if</span> <span class="s2">&quot;default&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+                    <span class="n">options</span><span class="p">[</span><span class="s2">&quot;default&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="s2">&quot;required&quot;</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+                    <span class="n">options</span><span class="p">[</span><span class="s2">&quot;required&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">elif</span> <span class="nb">type</span> <span class="ow">is</span> <span class="nb">list</span> <span class="ow">or</span> <span class="nb">type</span> <span class="o">==</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
                 <span class="n">options</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;append&quot;</span>
             <span class="k">elif</span> <span class="nb">type</span> <span class="o">==</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
@@ -541,29 +556,45 @@ are used as source files</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">_output</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_error</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">()</span>
 
+    <span class="k">def</span> <span class="nf">_read</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">]]:</span>
+        <span class="n">arrays</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_error</span>
+        <span class="n">streams</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stdout</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stderr</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">outs</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">__</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">streams</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[])</span>
+            <span class="n">available</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stdout</span> <span class="ow">in</span> <span class="n">outs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stderr</span> <span class="ow">in</span> <span class="n">outs</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+                <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">cond</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span> <span class="k">if</span> <span class="n">cond</span> <span class="k">else</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">streams</span><span class="p">,</span> <span class="n">available</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="p">)):</span>
+                <span class="k">break</span>
+            <span class="k">for</span> <span class="n">array</span><span class="p">,</span> <span class="n">res</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">arrays</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+                <span class="n">array</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
     <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stdout</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                    <span class="k">yield</span> <span class="n">line</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">line</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">yield</span> <span class="n">line</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
                     <span class="k">yield</span> <span class="n">line</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_check_exception</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">_read_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream</span><span class="p">:</span> <span class="n">IO</span><span class="p">[</span><span class="nb">bytes</span><span class="p">],</span> <span class="n">array</span><span class="p">:</span> <span class="nb">bytearray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">_wait</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-            <span class="n">array</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">():</span>
+                <span class="k">pass</span>
 
     <span class="k">def</span> <span class="nf">_read_output</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_stream</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stdout</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wait</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_read_error</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_stream</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stderr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_error</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wait</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_error</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
@@ -581,8 +612,6 @@ are used as source files</p>
     <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_read_output</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_read_error</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_stdout</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_stderr</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
             <span class="k">finally</span><span class="p">:</span>
@@ -590,7 +619,7 @@ are used as source files</p>
 
     <span class="k">def</span> <span class="nf">_check</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_read_output</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_wait</span><span class="p">()</span>
             <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_close</span><span class="p">()</span>
@@ -598,7 +627,7 @@ are used as source files</p>
 
     <span class="k">def</span> <span class="nf">_check_exception</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_read_output</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_wait</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
             <span class="k">if</span> <span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span>
@@ -619,8 +648,19 @@ are used as source files</p>
 
     <span class="k">def</span> <span class="nf">print</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Print the command output to the standard output&quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">iterable</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span>
+                <span class="k">else</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_output</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">(),</span> <span class="n">cycle</span><span class="p">([</span><span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">]))</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">out</span><span class="p">,</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">stderr</span><span class="p">)</span>
+                <span class="n">stderr</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_check_exception</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
@@ -765,8 +805,19 @@ the program exits with a non 0 code, if the class is destroyed</p>
             <summary>View Source</summary>
             <div class="codehilite"><pre><span></span>    <span class="k">def</span> <span class="nf">print</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Print the command output to the standard output&quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">iterable</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span>
+                <span class="k">else</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_output</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">(),</span> <span class="n">cycle</span><span class="p">([</span><span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="p">]))</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">out</span><span class="p">,</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">stderr</span><span class="p">)</span>
+                <span class="n">stderr</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_check_exception</span><span class="p">()</span>
 </pre></div>
 
         </details>
@@ -927,6 +978,54 @@ the program exits with a non 0 code, if the class is destroyed</p>
             </div>
                                 </dl>
                             </div>
+                </section>
+                <section id="silent_keyboard_interrupt">
+                            <div class="attr function"><a class="headerlink" href="#silent_keyboard_interrupt">#&nbsp;&nbsp</a>
+
+                <div class="decorator">@contextmanager</div>
+
+            <span class="def">def</span>
+            <span class="name">silent_keyboard_interrupt</span><span class="signature">()</span>:
+    </div>
+
+                <details>
+            <summary>View Source</summary>
+            <div class="codehilite"><pre><span></span><span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">silent_keyboard_interrupt</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+
+        </details>
+
+    
+
+                </section>
+                <section id="exit_on_error">
+                            <div class="attr function"><a class="headerlink" href="#exit_on_error">#&nbsp;&nbsp</a>
+
+                <div class="decorator">@contextmanager</div>
+
+            <span class="def">def</span>
+            <span class="name">exit_on_error</span><span class="signature">()</span>:
+    </div>
+
+                <details>
+            <summary>View Source</summary>
+            <div class="codehilite"><pre><span></span><span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">exit_on_error</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">except</span> <span class="n">ShellCommandException</span><span class="p">:</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+
+        </details>
+
+    
+
                 </section>
     </main>
 </body>
